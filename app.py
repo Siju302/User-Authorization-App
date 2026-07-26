@@ -1,6 +1,7 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, session, redirect, url_for
 import sqlite3
 app = Flask(__name__)
+app.secret_key = "Shifah"
 
 def connect_db():
     return sqlite3.connect("users.db")
@@ -21,9 +22,23 @@ def create_table():
 
 create_table()
 
-@app.route("/")
+@app.route("/", methods=["GET", "POST"])
 def login():
-    return render_template("login.html")
+    msg = ""
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+        db = connect_db()
+        cursor = db.cursor()
+        cursor.execute("SELECT * FROM Users WHERE username=? AND password=?", (username, password))
+        account = cursor.fetchone()
+        db.close()
+        if account:
+            session["username"] = username
+            return redirect(url_for("welcome"))
+        else:
+            msg = "Invalid username or password"
+    return render_template("login.html", msg = msg)
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -47,7 +62,9 @@ def register():
 
 @app.route("/welcome")
 def welcome():
-    return render_template("welcome.html")
+    if "username" not in session:
+        return redirect(url_for("login"))
+    return render_template("welcome.html", username = session["username"])
 
 
 
